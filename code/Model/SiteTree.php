@@ -239,7 +239,7 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
         "Stage",  "Live"
     );
 
-    private static $default_sort = "\"Sort\"";
+    private static $default_sort = "Sort";
 
     /**
      * If this is false, the class cannot be created in the CMS by regular content authors, only by ADMINs.
@@ -382,9 +382,9 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
 
         // Grab the initial root level page to traverse down from.
         $URLSegment = array_shift($parts);
-        $conditions = array('"SiteTree"."URLSegment"' => rawurlencode($URLSegment));
+        $conditions = array(Convert::symbol2sql('SiteTree.URLSegment') => rawurlencode($URLSegment));
         if (self::config()->nested_urls) {
-            $conditions[] = array('"SiteTree"."ParentID"' => 0);
+            $conditions[] = array(Convert::symbol2sql('SiteTree.ParentID') => 0);
         }
         /** @var SiteTree $sitetree */
         $sitetree = DataObject::get_one(self::class, $conditions, $cache);
@@ -393,7 +393,7 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
         if (!$sitetree
             && self::config()->nested_urls
             && $sitetree = DataObject::get_one(self::class, array(
-                '"SiteTree"."URLSegment"' => $URLSegment
+                Convert::symbol2sql('SiteTree.URLSegment') => $URLSegment
             ), $cache)
         ) {
             return $sitetree;
@@ -426,8 +426,8 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
             $next = DataObject::get_one(
                 self::class,
                 array(
-                    '"SiteTree"."URLSegment"' => $segment,
-                    '"SiteTree"."ParentID"' => $sitetree->ID
+                    Convert::symbol2sql('SiteTree.URLSegment') => $segment,
+                    Convert::symbol2sql('SiteTree.ParentID') => $sitetree->ID
                 ),
                 $cache
             );
@@ -1423,7 +1423,7 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
                 DB::alteration_message('Home page created', 'created');
             }
 
-            if (DB::query("SELECT COUNT(*) FROM \"SiteTree\"")->value() == 1) {
+            if (DB::query("SELECT COUNT(*) FROM SiteTree")->fetchColumn() == 1) {
                 $aboutus = new Page();
                 $aboutus->Title = _t(__CLASS__.'.DEFAULTABOUTTITLE', 'About Us');
                 $aboutus->Content = _t(
@@ -1459,9 +1459,9 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
         if (!$this->Sort) {
             $parentID = ($this->ParentID) ? $this->ParentID : 0;
             $this->Sort = DB::prepared_query(
-                "SELECT MAX(\"Sort\") + 1 FROM \"SiteTree\" WHERE \"ParentID\" = ?",
+                "SELECT MAX(Sort) + 1 FROM SiteTree WHERE ParentID = ?",
                 array($parentID)
-            )->value();
+            )->fetchColumn();
         }
 
         // If there is no URLSegment set, generate one from Title
