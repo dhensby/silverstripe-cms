@@ -820,7 +820,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
                     ++$counter;
                     $table = DataObject::getSchema()->baseDataTable($className);
                     DB::prepared_query(
-                        "UPDATE \"$table\" SET \"Sort\" = ? WHERE \"ID\" = ?",
+                        "UPDATE $table SET Sort = ? WHERE ID = ?",
                         array($counter, $id)
                     );
                 }
