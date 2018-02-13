@@ -12,6 +12,7 @@ use SilverStripe\Control\HTTPResponse_Exception;
 use SilverStripe\Control\NestedController;
 use SilverStripe\Control\RequestHandler;
 use SilverStripe\Core\ClassInfo;
+use SilverStripe\Core\Convert;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\Debug;
 use SilverStripe\ORM\DataObject;
@@ -128,9 +129,10 @@ class ModelAsController extends Controller implements NestedController
         }
 
         // Select child page
-        $conditions = array('"SiteTree"."URLSegment"' => rawurlencode($URLSegment));
+        $conditions = array(Convert::symbol2sql('SiteTree.URLSegment') => rawurlencode($URLSegment));
         if (SiteTree::config()->get('nested_urls')) {
-            $conditions[] = array('"SiteTree"."ParentID"' => 0);
+            $conditions[] = array(
+                Convert::symbol2sql('SiteTree.ParentID') => 0);
         }
         /** @var SiteTree $sitetree */
         $sitetree = DataObject::get_one(SiteTree::class, $conditions);
