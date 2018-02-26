@@ -84,15 +84,6 @@ class ModelAsController extends Controller implements NestedController
             return $this->getResponse();
         }
 
-        // If the database has not yet been created, redirect to the build page.
-        /** @skipUpgrade */
-        if (!DB::is_active() || !ClassInfo::hasTable('SiteTree')) {
-            $this->getResponse()->redirect(Director::absoluteBaseURL() . 'dev/build?returnURL=' . (isset($_GET['url']) ? urlencode($_GET['url']) : null));
-            $this->popCurrent();
-
-            return $this->getResponse();
-        }
-
         try {
             $result = $this->getNestedController();
 
@@ -128,12 +119,15 @@ class ModelAsController extends Controller implements NestedController
         }
 
         // Select child page
-        $conditions = array('"SiteTree"."URLSegment"' => rawurlencode($URLSegment));
+        $conditions = [
+            'URLSegment' => $URLSegment,
+        ];
+
         if (SiteTree::config()->get('nested_urls')) {
-            $conditions[] = array('"SiteTree"."ParentID"' => 0);
+            $conditions['ParentID'] = null;
         }
         /** @var SiteTree $sitetree */
-        $sitetree = DataObject::get_one(SiteTree::class, $conditions);
+        $sitetree = SiteTree::get()->filter($conditions)->first();
 
         // Check translation module
         // @todo Refactor out module specific code

@@ -93,7 +93,7 @@ class CMSPageEditController extends CMSMain
     }
 
     /**
-     * @param int $id
+     * @param string $id
      * @return Form
      */
     public function getAddToCampaignForm($id)

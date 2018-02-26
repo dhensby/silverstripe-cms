@@ -323,7 +323,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
     /**
      * Link to list view for children of a parent page
      *
-     * @param int|string $parentID Literal parentID, or placeholder (e.g. '%d') for
+     * @param string $parentID Literal parentID, or placeholder (e.g. '%d') for
      * client side substitution
      * @return string
      */
@@ -745,13 +745,12 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
         $className = $this->config()->get('tree_class');
         $id = $request->requestVar('ID');
         $parentID = $request->requestVar('ParentID');
-        if (!is_numeric($id) || !is_numeric($parentID)) {
+        if (!($node = DataObject::get_by_id($className, $id)) || !DataObject::get_by_id($className, $parentID)) {
             return $this->httpError(400);
         }
 
         // Check record exists in the DB
         /** @var SiteTree $node */
-        $node = DataObject::get_by_id($className, $id);
         if (!$node) {
             return $this->httpError(
                 500,
@@ -764,7 +763,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
 
         // Check top level permissions
         $root = $node->getParentType();
-        if (($parentID == '0' || $root == 'root') && !SiteConfig::current_site_config()->canCreateTopLevel()) {
+        if ((empty($root) || $root == 'root') && !SiteConfig::current_site_config()->canCreateTopLevel()) {
             return $this->httpError(
                 403,
                 _t(
@@ -783,7 +782,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
 
         // Update hierarchy (only if ParentID changed)
         if ($node->ParentID != $parentID) {
-            $node->ParentID = (int)$parentID;
+            $node->ParentID = $parentID;
             $node->write();
 
             $statusUpdates['modified'][$node->ID] = array(
@@ -814,7 +813,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
                     $statusUpdates['modified'][$node->ID] = array(
                         'TreeTitle' => $node->TreeTitle
                     );
-                } elseif (is_numeric($id)) {
+                } else {
                     // Nodes that weren't "actually moved" shouldn't be registered as
                     // having been edited; do a direct SQL update instead
                     ++$counter;
@@ -1131,7 +1130,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
     /**
      * Get a database record to be managed by the CMS.
      *
-     * @param int $id Record ID
+     * @param string $id Record ID
      * @param int $versionID optional Version id of the given record
      * @return SiteTree
      */
@@ -1146,9 +1145,6 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
         }
         if (substr($id, 0, 3) == 'new') {
             return $this->getNewItem($id);
-        }
-        if (!is_numeric($id)) {
-            return null;
         }
 
         $currentStage = Versioned::get_reading_mode();
@@ -1206,7 +1202,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
     }
 
     /**
-     * @param int $id
+     * @param string $id
      * @param FieldList $fields
      * @return Form
      */
@@ -1484,17 +1480,17 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
      * Doubles as search results, if any search parameters are set through {@link SearchForm()}.
      *
      * @param array $params Search filter criteria
-     * @param int $parentID Optional parent node to filter on (can't be combined with other search criteria)
+     * @param string $parentID Optional parent node to filter on (can't be combined with other search criteria)
      * @return SS_List
      * @throws InvalidArgumentException if invalid filter class is passed.
      */
-    public function getList($params = array(), $parentID = 0)
+    public function getList($params = array(), $parentID = null)
     {
         if ($filter = $this->getQueryFilter($params)) {
             return $filter->getFilteredPages();
         } else {
             $list = DataList::create($this->config()->get('tree_class'));
-            $parentID = is_numeric($parentID) ? $parentID : 0;
+            $parentID = $parentID ?: null;
             return $list->filter("ParentID", $parentID);
         }
     }
@@ -1556,7 +1552,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
                 if ($num) {
                     return sprintf(
                         '<a class="btn btn-secondary btn--no-text btn--icon-large font-icon-right-dir cms-panel-link list-children-link" data-pjax-target="ListViewForm,Breadcrumbs" href="%s"><span class="sr-only">%s child pages</span></a>',
-                        $this->LinkListViewChildren((int)$item->ID),
+                        $this->LinkListViewChildren($item->ID),
                         $num
                     );
                 }
@@ -1566,7 +1562,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
                     '<a class="action-detail" href="%s">%s</a>',
                     Controller::join_links(
                         CMSPageEditController::singleton()->Link('show'),
-                        (int)$item->ID
+                        $item->ID
                     ),
                     $item->TreeTitle // returns HTML, does its own escaping
                 );
@@ -1696,7 +1692,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
     /**
      * @uses LeftAndMainExtension->augmentNewSiteTreeItem()
      *
-     * @param int|string $id
+     * @param string $id
      * @param bool $setID
      * @return mixed|DataObject
      * @throws HTTPResponse_Exception
@@ -1778,7 +1774,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
             throw new HTTPResponse_Exception("Please pass an ID in the form content", 400);
         }
 
-        $id = (int) $data['ID'];
+        $id = $data['ID'];
         $restoredPage = Versioned::get_latest_version(SiteTree::class, $id);
         if (!$restoredPage) {
             throw new HTTPResponse_Exception("SiteTree #$id not found", 400);
@@ -1903,7 +1899,7 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
             return Security::permissionFailure($this);
         }
         if (!$record || !$record->ID) {
-            throw new HTTPResponse_Exception("Bad record ID #" . (int)$data['ID'], 404);
+            throw new HTTPResponse_Exception("Bad record ID #" . $data['ID'], 404);
         }
 
         $record->doUnpublish();
@@ -1942,8 +1938,8 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
     {
         $this->extend('onBeforeRollback', $data['ID'], $data['Version']);
 
-        $id = (isset($data['ID'])) ? (int) $data['ID'] : null;
-        $version = (isset($data['Version'])) ? (int) $data['Version'] : null;
+        $id = (isset($data['ID'])) ? $data['ID'] : null;
+        $version = (isset($data['Version'])) ? (int)$data['Version'] : null;
 
         /** @var DataObject|Versioned $record */
         $record = Versioned::get_latest_version($this->config()->get('tree_class'), $id);
@@ -2091,11 +2087,11 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
      */
     public function restore($data, $form)
     {
-        if (!isset($data['ID']) || !is_numeric($data['ID'])) {
+        if (empty($data['ID'])) {
             return new HTTPResponse("Please pass an ID in the form content", 400);
         }
 
-        $id = (int)$data['ID'];
+        $id = $data['ID'];
         /** @var SiteTree $restoredPage */
         $restoredPage = Versioned::get_latest_version(SiteTree::class, $id);
         if (!$restoredPage) {
@@ -2123,20 +2119,20 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
             return $this->httpError(400);
         }
 
-        if (($id = $this->urlParams['ID']) && is_numeric($id)) {
+        if (($id = $this->urlParams['ID'])) {
             /** @var SiteTree $page */
             $page = SiteTree::get()->byID($id);
             if ($page && (!$page->canEdit() || !$page->canCreate(null, array('Parent' => $page->Parent())))) {
                 return Security::permissionFailure($this);
             }
-            if (!$page || !$page->ID) {
+            if (!$page) {
                 throw new HTTPResponse_Exception("Bad record ID #$id", 404);
             }
 
             $newPage = $page->duplicate();
 
             // ParentID can be hard-set in the URL.  This is useful for pages with multiple parents
-            if (isset($_GET['parentID']) && is_numeric($_GET['parentID'])) {
+            if (isset($_GET['parentID'])) {
                 $newPage->ParentID = $_GET['parentID'];
                 $newPage->write();
             }
@@ -2167,13 +2163,13 @@ class CMSMain extends LeftAndMain implements CurrentPageIdentifier, PermissionPr
             return $this->httpError(400);
         }
         Environment::increaseTimeLimitTo();
-        if (($id = $this->urlParams['ID']) && is_numeric($id)) {
+        if (($id = $this->urlParams['ID'])) {
             /** @var SiteTree $page */
             $page = SiteTree::get()->byID($id);
             if ($page && (!$page->canEdit() || !$page->canCreate(null, array('Parent' => $page->Parent())))) {
                 return Security::permissionFailure($this);
             }
-            if (!$page || !$page->ID) {
+            if (!$page) {
                 throw new HTTPResponse_Exception("Bad record ID #$id", 404);
             }
 

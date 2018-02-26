@@ -104,14 +104,14 @@ class ContentController extends Controller
     /**
      * Return the children of a given page. The parent reference can either be a page link or an ID.
      *
-     * @param string|int $parentRef
+     * @param string $parentRef
      * @return SS_List
      */
     public function ChildrenOf($parentRef)
     {
         $parent = SiteTree::get_by_link($parentRef);
 
-        if (!$parent && is_numeric($parentRef)) {
+        if (!$parent) {
             $parent = DataObject::get_by_id(SiteTree::class, $parentRef);
         }
 
@@ -275,7 +275,7 @@ class ContentController extends Controller
         if ($level == 1) {
             $result = SiteTree::get()->filter(array(
                 "ShowInMenus" => 1,
-                "ParentID" => 0
+                "ParentID" => null
             ));
         } else {
             $parent = $this->data();

@@ -10,6 +10,7 @@ use SilverStripe\Control\HTTPResponse;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Resettable;
+use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use Translatable;
 
@@ -108,7 +109,8 @@ class RootURLController extends Controller implements Resettable
         self::$is_at_root = true;
 
         /** @skipUpgrade */
-        if (!DB::is_active() || !ClassInfo::hasTable('SiteTree')) {
+        $siteTreeTable = DataObject::getSchema()->baseDataTable(SiteTree::class);
+        if (!DB::is_active() || !ClassInfo::hasTable($siteTreeTable)) {
             $this->getResponse()->redirect(Controller::join_links(
                 Director::absoluteBaseURL(),
                 'dev/build',
@@ -129,11 +131,6 @@ class RootURLController extends Controller implements Resettable
         $this->beforeHandleRequest($request);
 
         if (!$this->getResponse()->isFinished()) {
-            /** @skipUpgrade */
-            if (!DB::is_active() || !ClassInfo::hasTable('SiteTree')) {
-                $this->getResponse()->redirect(Director::absoluteBaseURL() . 'dev/build?returnURL=' . (isset($_GET['url']) ? urlencode($_GET['url']) : null));
-                return $this->getResponse();
-            }
 
             $request->setUrl(self::get_homepage_link() . '/');
             $request->match('$URLSegment//$Action', true);

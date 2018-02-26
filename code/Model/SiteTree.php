@@ -384,7 +384,7 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
         $URLSegment = array_shift($parts);
         $conditions = array('"SiteTree"."URLSegment"' => rawurlencode($URLSegment));
         if (self::config()->nested_urls) {
-            $conditions[] = array('"SiteTree"."ParentID"' => 0);
+            $conditions[] = array('"SiteTree"."ParentID"' => null);
         }
         /** @var SiteTree $sitetree */
         $sitetree = DataObject::get_one(self::class, $conditions, $cache);
@@ -2403,7 +2403,7 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
 
         // Ensure that the parent page is restored, otherwise restore to root
         if ($this->isParentArchived()) {
-            $this->ParentID = 0;
+            $this->ParentID = null;
         }
 
         // if no record can be found on draft stage (meaning it has been "deleted from draft" before),
@@ -2994,7 +2994,7 @@ class SiteTree extends DataObject implements PermissionProvider, i18nEntityProvi
      */
     public function getParentType()
     {
-        return $this->ParentID == 0 ? 'root' : 'subpage';
+        return $this->ParentID ? 'subpage' : 'root';
     }
 
     /**
